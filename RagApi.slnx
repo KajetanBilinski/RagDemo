@@ -2,8 +2,5 @@
   <Folder Name="/Elementy rozwiązania/">
     <File Path="docker-compose.yml" />
   </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/RagApi.Tests/RagApi.Tests.csproj" />
-  </Folder>
   <Project Path="RagApi.csproj" />
 </Solution>
