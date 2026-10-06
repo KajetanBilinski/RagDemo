@@ -1,19 +1,25 @@
-﻿namespace RagApi.Services;
+﻿using Microsoft.Extensions.Options;
+using RagApi.Options;
+
+namespace RagApi.Services;
 
 public class RagService
 {
     private readonly OllamaEmbeddingService _embeddingService;
     private readonly QdrantService _qdrantService;
     private readonly OllamaChatService _chatService;
+    private readonly RagOptions _options;
 
     public RagService(
         OllamaEmbeddingService embeddingService,
         QdrantService qdrantService,
-        OllamaChatService chatService)
+        OllamaChatService chatService,
+        IOptions<RagOptions> options)
     {
         _embeddingService = embeddingService;
         _qdrantService = qdrantService;
         _chatService = chatService;
+        _options = options.Value;
     }
 
     public async Task<RagResult> AskAsync(string question)
@@ -21,10 +27,11 @@ public class RagService
         var questionEmbedding =
             await _embeddingService.GenerateEmbeddingAsync(question);
 
-        var searchResults = await _qdrantService.SearchAsync(
-            questionEmbedding,
-            limit: 3,
-            scoreThreshold: 0.5f);
+        var searchResults =
+            await _qdrantService.SearchAsync(
+                questionEmbedding,
+                _options.SearchLimit,
+                _options.ScoreThreshold);
 
         if (searchResults.Count == 0)
         {
@@ -40,6 +47,19 @@ public class RagService
             .Select(x => new RagSource
             {
                 Text = x.Payload["text"].StringValue,
+
+                FileName = x.Payload.TryGetValue(
+                    "fileName",
+                    out var fileName)
+                        ? fileName.StringValue
+                        : string.Empty,
+
+                ChunkIndex = x.Payload.TryGetValue(
+                    "chunkIndex",
+                    out var chunkIndex)
+                        ? (int)chunkIndex.IntegerValue
+                        : 0,
+
                 Score = x.Score
             })
             .ToList();
@@ -70,6 +90,10 @@ public class RagResult
 
 public class RagSource
 {
+    public string FileName { get; set; } = string.Empty;
+
+    public int ChunkIndex { get; set; }
+
     public string Text { get; set; } = string.Empty;
 
     public float Score { get; set; }

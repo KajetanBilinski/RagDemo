@@ -1,38 +1,39 @@
-﻿using Qdrant.Client;
+﻿using Microsoft.Extensions.Options;
+using Qdrant.Client;
 using Qdrant.Client.Grpc;
+using RagApi.Options;
 
 namespace RagApi.Services;
 
 public class QdrantService
 {
     private readonly QdrantClient _client;
-    private readonly string _collectionName;
+    private readonly QdrantOptions _options;
 
-    public QdrantService(IConfiguration configuration)
+    public QdrantService(
+        IOptions<QdrantOptions> options)
     {
-        var host = configuration["Qdrant:Host"] ?? "localhost";
-        var port = int.Parse(configuration["Qdrant:Port"] ?? "6334");
+        _options = options.Value;
 
-        _collectionName =
-            configuration["Qdrant:CollectionName"]
-            ?? "documents";
-
-        _client = new QdrantClient(host, port);
+        _client = new QdrantClient(
+            _options.Host,
+            _options.Port);
     }
 
     public async Task EnsureCollectionExistsAsync()
     {
         var exists =
-            await _client.CollectionExistsAsync(_collectionName);
+            await _client.CollectionExistsAsync(
+                _options.CollectionName);
 
         if (exists)
             return;
 
         await _client.CreateCollectionAsync(
-            _collectionName,
+            _options.CollectionName,
             new VectorParams
             {
-                Size = 768,
+                Size = _options.VectorSize,
                 Distance = Distance.Cosine
             });
     }
@@ -52,11 +53,34 @@ public class QdrantService
         point.Payload["text"] = text;
 
         await _client.UpsertAsync(
-            _collectionName,
+            _options.CollectionName,
             [point]);
     }
 
+    public async Task StoreChunkAsync(
+    Guid documentId,
+    string fileName,
+    int chunkIndex,
+    string text,
+    float[] embedding)
+    {
+        await EnsureCollectionExistsAsync();
 
+        var point = new PointStruct
+        {
+            Id = Guid.NewGuid(),
+            Vectors = embedding
+        };
+
+        point.Payload["documentId"] = documentId.ToString();
+        point.Payload["fileName"] = fileName;
+        point.Payload["chunkIndex"] = chunkIndex;
+        point.Payload["text"] = text;
+
+        await _client.UpsertAsync(
+            _options.CollectionName,
+            new[] { point });
+    }
 
 
     public async Task<IReadOnlyList<ScoredPoint>> SearchAsync(
@@ -67,7 +91,7 @@ public class QdrantService
         await EnsureCollectionExistsAsync();
 
         var results = await _client.QueryAsync(
-            _collectionName,
+            _options.CollectionName,
             embedding,
             limit: limit,
             scoreThreshold: scoreThreshold);

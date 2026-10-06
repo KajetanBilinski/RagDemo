@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using RagApi.Options;
 using RagApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,12 +10,26 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton<QdrantService>();
+builder.Services.AddSingleton<ChunkingService>();
 builder.Services.AddScoped<RagService>();
-builder.Services.AddHttpClient<OllamaEmbeddingService>(client =>
-{
-    client.BaseAddress = new Uri(
-        builder.Configuration["Ollama:BaseUrl"]!);
-});
+builder.Services.Configure<OllamaOptions>(
+    builder.Configuration.GetSection(OllamaOptions.SectionName));
+
+builder.Services.Configure<QdrantOptions>(
+    builder.Configuration.GetSection(QdrantOptions.SectionName));
+
+builder.Services.Configure<RagOptions>(
+    builder.Configuration.GetSection(RagOptions.SectionName));
+builder.Services.AddHttpClient<OllamaEmbeddingService>(
+    (serviceProvider, client) =>
+    {
+        var options = serviceProvider
+            .GetRequiredService<IOptions<OllamaOptions>>()
+            .Value;
+
+        client.BaseAddress =
+            new Uri(options.BaseUrl);
+    });
 builder.Services.AddHttpClient<OllamaChatService>(client =>
 {
     client.BaseAddress = new Uri(

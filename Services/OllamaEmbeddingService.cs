@@ -1,25 +1,28 @@
 ﻿namespace RagApi.Services;
 
+using System.Net.Http.Json;
+using Microsoft.Extensions.Options;
+using RagApi.Options;
+
+
 public class OllamaEmbeddingService
 {
     private readonly HttpClient _httpClient;
-    private readonly IConfiguration _configuration;
+    private readonly OllamaOptions _options;
 
     public OllamaEmbeddingService(
         HttpClient httpClient,
-        IConfiguration configuration)
+        IOptions<OllamaOptions> options)
     {
         _httpClient = httpClient;
-        _configuration = configuration;
+        _options = options.Value;
     }
 
     public async Task<float[]> GenerateEmbeddingAsync(string text)
     {
-        var model = _configuration["Ollama:EmbeddingModel"];
-
         var request = new
         {
-            model,
+            model = _options.EmbeddingModel,
             input = text
         };
 
@@ -30,9 +33,11 @@ public class OllamaEmbeddingService
         response.EnsureSuccessStatusCode();
 
         var result =
-            await response.Content.ReadFromJsonAsync<OllamaEmbeddingResponse>();
+            await response.Content
+                .ReadFromJsonAsync<OllamaEmbeddingResponse>();
 
-        if (result?.Embeddings is null || result.Embeddings.Length == 0)
+        if (result?.Embeddings is null ||
+            result.Embeddings.Length == 0)
         {
             throw new InvalidOperationException(
                 "Ollama did not return an embedding.");
