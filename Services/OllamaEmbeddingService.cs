@@ -1,6 +1,4 @@
-﻿using System.Net.Http.Json;
-
-namespace RagApi.Services;
+﻿namespace RagApi.Services;
 
 public class OllamaEmbeddingService
 {

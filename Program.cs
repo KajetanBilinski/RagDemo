@@ -8,7 +8,13 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton<QdrantService>();
+builder.Services.AddScoped<RagService>();
 builder.Services.AddHttpClient<OllamaEmbeddingService>(client =>
+{
+    client.BaseAddress = new Uri(
+        builder.Configuration["Ollama:BaseUrl"]!);
+});
+builder.Services.AddHttpClient<OllamaChatService>(client =>
 {
     client.BaseAddress = new Uri(
         builder.Configuration["Ollama:BaseUrl"]!);

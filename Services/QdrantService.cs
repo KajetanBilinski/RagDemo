@@ -57,17 +57,20 @@ public class QdrantService
     }
 
 
+
+
     public async Task<IReadOnlyList<ScoredPoint>> SearchAsync(
-    float[] embedding,
-    ulong limit = 3)
+        float[] embedding,
+        ulong limit = 3,
+        float scoreThreshold = 0.5f)
     {
         await EnsureCollectionExistsAsync();
 
-        var results =
-            await _client.QueryAsync(
-                _collectionName,
-                embedding,
-                limit: limit);
+        var results = await _client.QueryAsync(
+            _collectionName,
+            embedding,
+            limit: limit,
+            scoreThreshold: scoreThreshold);
 
         return results;
     }
